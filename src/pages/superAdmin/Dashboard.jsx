@@ -28,9 +28,11 @@ import {
     FilterList as FilterListIcon,
     CheckCircle as CheckCircleIcon,
     Cancel as CancelIcon,
-    Visibility as VisibilityIcon
+    Visibility as VisibilityIcon,
+    AccessTime as AccessTimeIcon,
+    Group as GroupIcon
 } from '@mui/icons-material';
-import { useGetPendingNotesQuery, useGetPendingToppersQuery } from '../../feature/api/adminApi';
+import { useGetPendingNotesQuery, useGetPendingToppersQuery, useGetStudentUsageQuery } from '../../feature/api/adminApi';
 import { useNavigate } from 'react-router-dom';
 
 const StatCard = ({ title, value, icon, color, subText }) => (
@@ -65,14 +67,23 @@ const Dashboard = () => {
     const { data: pendingNotesData } = useGetPendingNotesQuery(token, { skip: !token });
     const { data: pendingToppersData } = useGetPendingToppersQuery(token, { skip: !token });
 
+    const { data: usageData } = useGetStudentUsageQuery(token, { skip: !token });
+
     const pendingNotesCount = pendingNotesData?.data?.length || 0;
     const pendingToppersCount = pendingToppersData?.data?.length || 0;
-
-    // Mock data for UI visualization matching the image style
-    const recentUploads = pendingNotesData?.data?.slice(0, 3) || [];
+    const totalStudents = usageData?.data?.totalStudents || 0;
+    const totalAppTime = Math.round((usageData?.data?.totalAppTime || 0) / 60); // in minutes
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
+    };
+
+    const formatTime = (seconds) => {
+        if (seconds < 60) return `${seconds}s`;
+        const mins = Math.floor(seconds / 60);
+        if (mins < 60) return `${mins}m`;
+        const hrs = Math.floor(mins / 60);
+        return `${hrs}h ${mins % 60}m`;
     };
 
     return (
@@ -107,20 +118,20 @@ const Dashboard = () => {
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                     <StatCard
-                        title="Topper Profiles"
-                        value={pendingToppersCount}
-                        icon={<SchoolIcon />}
+                        title="Active Students"
+                        value={totalStudents}
+                        icon={<GroupIcon />}
                         color="#448aff"
-                        subText="+5%"
+                        subText="Live"
                     />
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                     <StatCard
-                        title="Total Revenue"
-                        value="$12,450"
-                        icon={<AttachMoneyIcon />}
+                        title="App Usage"
+                        value={`${totalAppTime}m`}
+                        icon={<AccessTimeIcon />}
                         color="#00e676"
-                        subText="+15%"
+                        subText="Total"
                     />
                 </Grid>
             </Grid>
@@ -159,7 +170,8 @@ const Dashboard = () => {
                             }}
                         >
                             <Tab label="Notes Moderation" />
-                            <Tab label="User Management" />
+                            <Tab label="Toppers" />
+                            <Tab label="Student Activity" />
                         </Tabs>
 
                         <Divider sx={{ bgcolor: '#2c3039' }} />
@@ -167,9 +179,11 @@ const Dashboard = () => {
                         {/* List Header */}
                         <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Typography variant="subtitle1" fontWeight="bold">
-                                {tabValue === 0 ? `Pending Uploads (${pendingNotesCount})` : `Pending Toppers (${pendingToppersCount})`}
+                                {tabValue === 0 ? `Pending Uploads (${pendingNotesCount})` :
+                                    tabValue === 1 ? `Topper Requests (${pendingToppersCount})` :
+                                        `Student Engagement`}
                             </Typography>
-                            <Button size="small" sx={{ color: '#448aff', textTransform: 'none' }}>Sort by Date</Button>
+                            <Button size="small" sx={{ color: '#448aff', textTransform: 'none' }}>Sort by Active</Button>
                         </Box>
 
                         {/* List Items */}
@@ -237,11 +251,37 @@ const Dashboard = () => {
                                 ) : (
                                     <Typography sx={{ color: '#8b9bb4', textAlign: 'center', py: 4 }}>No pending notes found</Typography>
                                 )
-                            ) : (
+                            ) : tabValue === 1 ? (
                                 // Toppers List Placeholder
                                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                                     <Button variant="contained" onClick={() => navigate('/superAdmin/toppers/pending')}>View All Pending Requests</Button>
                                 </Box>
+                            ) : (
+                                // Student Activity List
+                                usageData?.data?.topActiveStudents?.length > 0 ? (
+                                    usageData.data.topActiveStudents.map((student) => (
+                                        <ListItem key={student._id} sx={{ bgcolor: '#2c3039', borderRadius: 2, mb: 1 }}>
+                                            <ListItemAvatar>
+                                                <Avatar src={student.profilePhoto} />
+                                            </ListItemAvatar>
+                                            <ListItemText
+                                                primary={student.fullName}
+                                                secondary={`${student.class}th • ${student.board}`}
+                                                sx={{ '& .MuiListItemText-primary': { color: 'white' }, '& .MuiListItemText-secondary': { color: '#8b9bb4' } }}
+                                            />
+                                            <Box sx={{ textAlign: 'right' }}>
+                                                <Typography variant="subtitle2" color="#00e676">
+                                                    {formatTime(student.stats?.totalTimeSpent || 0)}
+                                                </Typography>
+                                                <Typography variant="caption" color="#8b9bb4">
+                                                    Total Time
+                                                </Typography>
+                                            </Box>
+                                        </ListItem>
+                                    ))
+                                ) : (
+                                    <Typography sx={{ color: '#8b9bb4', textAlign: 'center', py: 4 }}>No student activity found</Typography>
+                                )
                             )}
                         </List>
 

@@ -143,6 +143,13 @@ export const adminApi = createApi({
         headers: { Authorization: `Bearer ${token}` },
       }),
     }),
+    getStudentUsage: builder.query({
+      query: (token) => ({
+        url: `/admin/students/usage`,
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    }),
   }),
 });
 
@@ -160,5 +167,6 @@ export const {
   useApproveNoteMutation,
   useRejectNoteMutation,
   usePreviewNoteQuery,
-  useLazyPreviewNoteQuery
+  useLazyPreviewNoteQuery,
+  useGetStudentUsageQuery
 } = adminApi;
