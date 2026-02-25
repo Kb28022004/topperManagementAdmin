@@ -8,7 +8,7 @@ export const adminApi = createApi({
     baseUrl: ADMIN_API,
     credentials: "include",
   }),
-  tagTypes: ["Toppers", "Notes"],
+  tagTypes: ["Toppers", "Notes", "Payouts"],
   endpoints: (builder) => ({
 
     login: builder.mutation({
@@ -150,6 +150,23 @@ export const adminApi = createApi({
         headers: { Authorization: `Bearer ${token}` },
       }),
     }),
+    getPayoutRequests: builder.query({
+      query: ({ token, status, page, limit }) => ({
+        url: `/admin/payouts?status=${status || 'PENDING'}&page=${page || 1}&limit=${limit || 10}`,
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      providesTags: ["Payouts"],
+    }),
+    updatePayoutStatus: builder.mutation({
+      query: ({ id, status, transactionId, adminRemarks, token }) => ({
+        url: `/admin/payouts/${id}/status`,
+        method: "PATCH",
+        body: { status, transactionId, adminRemarks },
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      invalidatesTags: ["Payouts"],
+    }),
   }),
 });
 
@@ -168,5 +185,7 @@ export const {
   useRejectNoteMutation,
   usePreviewNoteQuery,
   useLazyPreviewNoteQuery,
-  useGetStudentUsageQuery
+  useGetStudentUsageQuery,
+  useGetPayoutRequestsQuery,
+  useUpdatePayoutStatusMutation
 } = adminApi;

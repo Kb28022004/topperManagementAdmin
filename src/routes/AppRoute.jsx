@@ -17,6 +17,7 @@ const PendingNotes = lazy(() => import("../pages/superAdmin/Notes/PendingNotes")
 const ApprovedNotes = lazy(() => import("../pages/superAdmin/Notes/ApprovedNotes"));
 const RejectedNotes = lazy(() => import("../pages/superAdmin/Notes/RejectedNotes"));
 const ReviewNote = lazy(() => import("../pages/superAdmin/Notes/ReviewNote"));
+const PayoutManagement = lazy(() => import("../pages/superAdmin/Payouts/PayoutManagement"));
 
 import {
   GuestOnly,
@@ -150,6 +151,14 @@ const AppRoute = () => {
           element: (
             <Suspense fallback={<LoadingFallback />}>
               <ReviewNote />
+            </Suspense>
+          )
+        },
+        {
+          path: "payouts",
+          element: (
+            <Suspense fallback={<LoadingFallback />}>
+              <PayoutManagement />
             </Suspense>
           )
         },

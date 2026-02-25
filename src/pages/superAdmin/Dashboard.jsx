@@ -32,7 +32,7 @@ import {
     AccessTime as AccessTimeIcon,
     Group as GroupIcon
 } from '@mui/icons-material';
-import { useGetPendingNotesQuery, useGetPendingToppersQuery, useGetStudentUsageQuery } from '../../feature/api/adminApi';
+import { useGetPendingNotesQuery, useGetPendingToppersQuery, useGetStudentUsageQuery, useApproveNoteMutation, useRejectNoteMutation } from '../../feature/api/adminApi';
 import { useNavigate } from 'react-router-dom';
 
 const StatCard = ({ title, value, icon, color, subText }) => (
@@ -61,18 +61,34 @@ const StatCard = ({ title, value, icon, color, subText }) => (
 const Dashboard = () => {
     const navigate = useNavigate();
     const [tabValue, setTabValue] = useState(0);
-    const token = localStorage.getItem("authToken"); // Handle token properly in real implementation
+    const token = localStorage.getItem("authToken");
 
-    // Using the hooks we created. Note: Ensure token is available or handle skip
-    const { data: pendingNotesData } = useGetPendingNotesQuery(token, { skip: !token });
-    const { data: pendingToppersData } = useGetPendingToppersQuery(token, { skip: !token });
-
+    const { data: pendingNotesData, isFetching: notesFetching } = useGetPendingNotesQuery({ token }, { skip: !token });
+    const { data: pendingToppersData, isFetching: toppersFetching } = useGetPendingToppersQuery(token, { skip: !token });
     const { data: usageData } = useGetStudentUsageQuery(token, { skip: !token });
 
-    const pendingNotesCount = pendingNotesData?.data?.length || 0;
-    const pendingToppersCount = pendingToppersData?.data?.length || 0;
+    // ─── Derived data ─────────────────────────────────────────────────────────
+    const recentUploads = pendingNotesData?.data ?? [];
+    const pendingToppers = pendingToppersData?.data ?? [];
+
+    const pendingNotesCount = recentUploads.length;
+    const pendingToppersCount = pendingToppers.length;
     const totalStudents = usageData?.data?.totalStudents || 0;
-    const totalAppTime = Math.round((usageData?.data?.totalAppTime || 0) / 60); // in minutes
+    const totalAppTime = Math.round((usageData?.data?.totalAppTime || 0) / 60);
+
+    // ─── Mutations ────────────────────────────────────────────────────────────
+    const [approveNote] = useApproveNoteMutation();
+    const [rejectNote] = useRejectNoteMutation();
+
+    const handleApprove = async (noteId) => {
+        try { await approveNote({ token, id: noteId }).unwrap(); }
+        catch { /* toast handled globally */ }
+    };
+
+    const handleReject = async (noteId) => {
+        try { await rejectNote({ token, id: noteId }).unwrap(); }
+        catch { /* toast handled globally */ }
+    };
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -189,59 +205,52 @@ const Dashboard = () => {
                         {/* List Items */}
                         <List sx={{ px: 2, pb: 2 }}>
                             {tabValue === 0 ? (
-                                recentUploads.length > 0 ? (
+                                notesFetching ? (
+                                    <Typography sx={{ color: '#8b9bb4', textAlign: 'center', py: 4 }}>Loading…</Typography>
+                                ) : recentUploads.length > 0 ? (
                                     recentUploads.map((note) => (
                                         <Paper key={note._id} sx={{ mb: 2, bgcolor: '#2c3039', p: 2, borderRadius: 2 }}>
                                             <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                                                {/* <Avatar variant="rounded" src={note.previewImages?.[0]} sx={{ width: 60, height: 60 }} /> */}
                                                 <Box sx={{
-                                                    width: 60,
-                                                    height: 60,
-                                                    bgcolor: '#3d4250',
-                                                    borderRadius: 1,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center'
+                                                    width: 60, height: 60, bgcolor: '#3d4250',
+                                                    borderRadius: 1, display: 'flex',
+                                                    alignItems: 'center', justifyContent: 'center'
                                                 }}>
                                                     <DescriptionIcon sx={{ color: '#8b9bb4' }} />
                                                 </Box>
                                                 <Box sx={{ flex: 1 }}>
                                                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                        <Typography variant="subtitle1" fontWeight="bold">{note.title}</Typography>
-                                                        <Typography variant="caption" sx={{ color: '#8b9bb4' }}>
-                                                            Just now
-                                                        </Typography>
+                                                        <Typography variant="subtitle1" fontWeight="bold">{note.chapterName || note.title}</Typography>
+                                                        <Typography variant="caption" sx={{ color: '#8b9bb4' }}>Pending</Typography>
                                                     </Box>
                                                     <Typography variant="body2" sx={{ color: '#8b9bb4' }}>
-                                                        {note.topperId?.firstName || "Unknown Topper"} • {note.class || "Class N/A"} • {note.subject || "Subject N/A"}
+                                                        {note.topperId?.firstName || "Unknown Topper"} • Class {note.class || "N/A"} • {note.subject || "N/A"}
                                                     </Typography>
                                                     <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
                                                         <Chip label={note.subject} size="small" sx={{ bgcolor: '#448aff20', color: '#448aff', borderRadius: 1 }} />
-                                                        <Chip label="Exam Prep" size="small" sx={{ bgcolor: '#ff914d20', color: '#ff914d', borderRadius: 1 }} />
+                                                        <Chip label={`₹${note.price}`} size="small" sx={{ bgcolor: '#00e67620', color: '#00e676', borderRadius: 1 }} />
                                                     </Box>
                                                 </Box>
                                             </Box>
                                             <Box sx={{ display: 'flex', gap: 2 }}>
                                                 <Button
-                                                    variant="outlined"
-                                                    fullWidth
+                                                    variant="outlined" fullWidth
                                                     sx={{ color: '#8b9bb4', borderColor: '#3d4250', textTransform: 'none' }}
-                                                    onClick={() => navigate(`/superAdmin/notes/pending`)} // Ideally open a modal
+                                                    onClick={() => navigate(`/superAdmin/notes/pending`)}
                                                 >
                                                     View
                                                 </Button>
                                                 <Button
-                                                    variant="outlined"
-                                                    fullWidth
-                                                    color="error"
+                                                    variant="outlined" fullWidth color="error"
                                                     sx={{ textTransform: 'none' }}
+                                                    onClick={() => handleReject(note._id)}
                                                 >
                                                     Reject
                                                 </Button>
                                                 <Button
-                                                    variant="contained"
-                                                    fullWidth
+                                                    variant="contained" fullWidth
                                                     sx={{ bgcolor: '#448aff', textTransform: 'none' }}
+                                                    onClick={() => handleApprove(note._id)}
                                                 >
                                                     Approve
                                                 </Button>
@@ -285,7 +294,7 @@ const Dashboard = () => {
                             )}
                         </List>
 
-                        {recentUploads.length > 0 && tabValue === 0 && (
+                        {recentUploads?.length > 0 && tabValue === 0 && (
                             <Box sx={{ p: 2, textAlign: 'center', borderTop: '1px solid #2c3039' }}>
                                 <Button onClick={() => navigate('/superAdmin/notes/pending')}>View All Notes</Button>
                             </Box>

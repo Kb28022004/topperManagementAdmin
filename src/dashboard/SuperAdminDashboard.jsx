@@ -77,6 +77,11 @@ const SuperAdminDashboard = () => {
       navigate: "reports",
     },
     {
+      title: "Payouts",
+      icon: fourthIcon,
+      navigate: "payouts",
+    },
+    {
       title: "Settings",
       icon: secondIcon,
       navigate: "settings",
